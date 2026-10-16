@@ -1,0 +1,8 @@
+{
+  "name": "Cuida Bem — Guia Familiar de Saúde",
+  "description": "Guia prático para cuidadores familiares e atenção domiciliar: emergências 192/193/190, primeiros socorros interativos, cuidados com paciente acamado e registro de medicamentos e saúde.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
