@@ -257,7 +257,10 @@ export const EmergencySection: React.FC<EmergencySectionProps> = ({
                 </a>
               ) : (
                 <button
-                  onClick={() => setIsEditingUbs(true)}
+                  onClick={() => {
+                    setUbsForm(ubs);
+                    setIsEditingUbs(true);
+                  }}
                   className="flex-1 h-11 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-xs"
                 >
                   <span>Cadastrar Telefone da UBS</span>

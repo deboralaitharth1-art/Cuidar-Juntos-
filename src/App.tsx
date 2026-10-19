@@ -6,29 +6,53 @@ import { EmergencySection } from './components/EmergencySection';
 import { FirstAidSection } from './components/FirstAidSection';
 import { HomeCareSection } from './components/HomeCareSection';
 import { HealthAgendaSection } from './components/HealthAgendaSection';
+import { GoogleWorkspaceSection } from './components/GoogleWorkspaceSection';
+import { AuthModal } from './components/AuthModal';
 import { Toast } from './components/Toast';
 import { Modal } from './components/Modal';
 import { AppLogo } from './components/AppLogo';
 import {
+  AppUserProfile,
+  getLocalUserProfile,
+  subscribeToAuthChanges,
+  initAuth
+} from './services/firebaseAuth';
+import {
+  saveUserDataToFirestore,
+  loadUserDataFromFirestore
+} from './services/firestoreSync';
+import {
   PatientData,
+  PatientProfile,
   UbsData,
   MedicationItem,
-  HealthLogItem
+  HealthLogItem,
+  MedicalAppointment
 } from './types';
 import {
   getStoredPatient,
   savePatient,
+  getStoredPatientList,
+  savePatientList,
+  getActivePatientId,
+  saveActivePatientId,
   getStoredUbs,
   saveUbs,
   getStoredMedications,
   saveMedications,
   getStoredHealthLogs,
   saveHealthLogs,
+  getStoredAppointments,
+  saveAppointments,
   getStoredTextSize,
   saveTextSize,
   TextSizeOption
 } from './utils/storage';
 import { stopSpeaking } from './utils/speech';
+import { MedicalSummaryPrintModal } from './components/MedicalSummaryPrintModal';
+import { MedicationAlarmModal } from './components/MedicationAlarmModal';
+import { PatientSwitchModal } from './components/PatientSwitchModal';
+import { useMedicationAlarm } from './hooks/useMedicationAlarm';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<string>('emergencia');
@@ -36,20 +60,28 @@ export default function App() {
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Authentication & Profile States
+  const [currentUser, setCurrentUser] = useState<AppUserProfile | null>(getLocalUserProfile);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
   // Persistent States
-  const [patient, setPatient] = useState<PatientData>(getStoredPatient);
+  const [patientList, setPatientList] = useState<PatientProfile[]>(getStoredPatientList);
+  const [activePatientId, setActivePatientId] = useState<string>(getActivePatientId);
+  const [patient, setPatient] = useState<PatientData>(() => {
+    const list = getStoredPatientList();
+    const activeId = getActivePatientId();
+    const found = list.find(p => p.id === activeId);
+    return found || getStoredPatient();
+  });
   const [ubs, setUbs] = useState<UbsData>(getStoredUbs);
   const [medications, setMedications] = useState<MedicationItem[]>(getStoredMedications);
   const [healthLogs, setHealthLogs] = useState<HealthLogItem[]>(getStoredHealthLogs);
+  const [appointments, setAppointments] = useState<MedicalAppointment[]>(getStoredAppointments);
 
-  // Quick SOS Modal
+  // Modals state
   const [isSosModalOpen, setIsSosModalOpen] = useState<boolean>(false);
-
-  // Handle Text Size changes
-  const handleTextSizeChange = (newSize: TextSizeOption) => {
-    setTextSize(newSize);
-    saveTextSize(newSize);
-  };
+  const [isMedicalSummaryOpen, setIsMedicalSummaryOpen] = useState<boolean>(false);
+  const [isPatientSwitchOpen, setIsPatientSwitchOpen] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -58,24 +90,227 @@ export default function App() {
     }, 3500);
   };
 
+  // Medication schedule background alarm & chime
+  const handleAlarmMarkTaken = (medId: string, time: string) => {
+    const updated = medications.map(m => {
+      if (m.id !== medId) return m;
+      return {
+        ...m,
+        tomadoHoje: {
+          ...(m.tomadoHoje || {}),
+          [time]: true
+        }
+      };
+    });
+    setMedications(updated);
+    saveMedications(updated);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { medications: updated });
+    }
+    showToast('✅ Dose de medicamento registrada com sucesso!');
+  };
+
+  const {
+    activeAlarm,
+    closeAlarm,
+    snoozeAlarm,
+    isSoundMuted,
+    toggleSoundMuted,
+    testAlarm
+  } = useMedicationAlarm(medications, handleAlarmMarkTaken, showToast);
+
+  useEffect(() => {
+    const unsubscribeFirebase = initAuth();
+    const unsubscribeChanges = subscribeToAuthChanges((profile) => {
+      setCurrentUser(profile);
+    });
+    return () => {
+      unsubscribeFirebase();
+      unsubscribeChanges();
+    };
+  }, []);
+
+  // Cloud Synchronization when user logs in with Google or changes account
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    let isCancelled = false;
+    const syncUserCloudData = async () => {
+      try {
+        const cloudData = await loadUserDataFromFirestore(currentUser.uid);
+        if (isCancelled) return;
+
+        if (cloudData && (cloudData.patient || cloudData.medications || cloudData.healthLogs || cloudData.appointments || cloudData.patientList)) {
+          if (cloudData.patientList && cloudData.patientList.length > 0) {
+            setPatientList(cloudData.patientList);
+            savePatientList(cloudData.patientList);
+          }
+          if (cloudData.activePatientId) {
+            setActivePatientId(cloudData.activePatientId);
+            saveActivePatientId(cloudData.activePatientId);
+          }
+          if (cloudData.patient) {
+            setPatient(cloudData.patient);
+            savePatient(cloudData.patient);
+          }
+          if (cloudData.ubs) {
+            setUbs(cloudData.ubs);
+            saveUbs(cloudData.ubs);
+          }
+          if (cloudData.medications && cloudData.medications.length > 0) {
+            setMedications(cloudData.medications);
+            saveMedications(cloudData.medications);
+          }
+          if (cloudData.healthLogs && cloudData.healthLogs.length > 0) {
+            setHealthLogs(cloudData.healthLogs);
+            saveHealthLogs(cloudData.healthLogs);
+          }
+          if (cloudData.appointments && cloudData.appointments.length > 0) {
+            setAppointments(cloudData.appointments);
+            saveAppointments(cloudData.appointments);
+          }
+          showToast('☁️ Suas informações salvas no Google foram restauradas com sucesso!');
+        } else {
+          // No cloud data yet for this account -> backup current local data to Firestore
+          await saveUserDataToFirestore(currentUser.uid, {
+            patient,
+            patientList,
+            activePatientId,
+            ubs,
+            medications,
+            healthLogs,
+            appointments
+          });
+          showToast('☁️ Seus dados foram salvos com segurança na sua conta Google!');
+        }
+      } catch (err) {
+        console.error('Error during cloud sync:', err);
+      }
+    };
+
+    syncUserCloudData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser?.uid]);
+
+  // Handle Text Size changes
+  const handleTextSizeChange = (newSize: TextSizeOption) => {
+    setTextSize(newSize);
+    saveTextSize(newSize);
+  };
+
+  // Multi-patient management handlers
+  const handleSelectPatient = (id: string) => {
+    const found = patientList.find(p => p.id === id);
+    if (!found) return;
+    setActivePatientId(id);
+    saveActivePatientId(id);
+    setPatient(found);
+    savePatient(found);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, {
+        patient: found,
+        activePatientId: id
+      });
+    }
+    showToast(`👤 Paciente alterado para ${found.nome}`);
+  };
+
+  const handleAddPatient = (newP: PatientData) => {
+    const newProfile: PatientProfile = {
+      ...newP,
+      id: `patient-${Date.now()}`
+    };
+    const updatedList = [...patientList, newProfile];
+    setPatientList(updatedList);
+    savePatientList(updatedList);
+    setActivePatientId(newProfile.id);
+    saveActivePatientId(newProfile.id);
+    setPatient(newProfile);
+    savePatient(newProfile);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, {
+        patient: newProfile,
+        patientList: updatedList,
+        activePatientId: newProfile.id
+      });
+    }
+  };
+
+  const handleDeletePatient = (id: string) => {
+    if (patientList.length <= 1) {
+      showToast('⚠️ É necessário manter ao menos 1 paciente cadastrado.');
+      return;
+    }
+    const updatedList = patientList.filter(p => p.id !== id);
+    setPatientList(updatedList);
+    savePatientList(updatedList);
+    if (activePatientId === id) {
+      const nextActive = updatedList[0];
+      setActivePatientId(nextActive.id);
+      saveActivePatientId(nextActive.id);
+      setPatient(nextActive);
+      savePatient(nextActive);
+    }
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, {
+        patientList: updatedList
+      });
+    }
+    showToast('🗑️ Paciente removido.');
+  };
+
   const handleUpdatePatient = (updated: PatientData) => {
     setPatient(updated);
     savePatient(updated);
+    const updatedList = patientList.map(p => {
+      if (p.id === (updated.id || activePatientId)) {
+        return { ...updated, id: p.id };
+      }
+      return p;
+    });
+    setPatientList(updatedList);
+    savePatientList(updatedList);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, {
+        patient: updated,
+        patientList: updatedList
+      });
+    }
   };
 
   const handleUpdateUbs = (updated: UbsData) => {
     setUbs(updated);
     saveUbs(updated);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { ubs: updated });
+    }
   };
 
   const handleUpdateMedications = (updated: MedicationItem[]) => {
     setMedications(updated);
     saveMedications(updated);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { medications: updated });
+    }
   };
 
   const handleUpdateHealthLogs = (updated: HealthLogItem[]) => {
     setHealthLogs(updated);
     saveHealthLogs(updated);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { healthLogs: updated });
+    }
+  };
+
+  const handleUpdateAppointments = (updated: MedicalAppointment[]) => {
+    setAppointments(updated);
+    saveAppointments(updated);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { appointments: updated });
+    }
   };
 
   const handleStopSpeaking = () => {
@@ -103,6 +338,11 @@ export default function App() {
         activeSection={activeSection}
         onSelectSection={setActiveSection}
         onQuickEmergency={() => setIsSosModalOpen(true)}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        activePatientName={patient.nome}
+        onOpenPatientSwitch={() => setIsPatientSwitchOpen(true)}
+        onOpenMedicalSummary={() => setIsMedicalSummaryOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -131,7 +371,7 @@ export default function App() {
           <HomeCareSection onShowToast={showToast} />
         )}
 
-        {/* Section 4: Agenda & Saúde */}
+        {/* Section 4: Agenda & Saúde (Consultas, Exames, Remédios e Sinais Vitais) */}
         {activeSection === 'agenda' && (
           <HealthAgendaSection
             patient={patient}
@@ -140,6 +380,24 @@ export default function App() {
             onUpdateMedications={handleUpdateMedications}
             healthLogs={healthLogs}
             onUpdateHealthLogs={handleUpdateHealthLogs}
+            appointments={appointments}
+            onUpdateAppointments={handleUpdateAppointments}
+            onShowToast={showToast}
+            onGoToGoogleTab={() => setActiveSection('google')}
+            onOpenMedicalSummary={() => setIsMedicalSummaryOpen(true)}
+            onOpenPatientSwitch={() => setIsPatientSwitchOpen(true)}
+            onTestAlarm={testAlarm}
+            isSoundMuted={isSoundMuted}
+            onToggleSoundMuted={toggleSoundMuted}
+          />
+        )}
+
+        {/* Section 5: Google Calendar & Gmail */}
+        {activeSection === 'google' && (
+          <GoogleWorkspaceSection
+            patient={patient}
+            medications={medications}
+            healthLogs={healthLogs}
             onShowToast={showToast}
           />
         )}
@@ -250,6 +508,48 @@ export default function App() {
           </div>
         </div>
       </Modal>
+
+      {/* Authentication and Account Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={currentUser}
+        onShowToast={showToast}
+        onSelectSection={setActiveSection}
+      />
+
+      {/* Medical Summary Print & PDF Modal */}
+      <MedicalSummaryPrintModal
+        isOpen={isMedicalSummaryOpen}
+        onClose={() => setIsMedicalSummaryOpen(false)}
+        patient={patient}
+        ubs={ubs}
+        medications={medications}
+        healthLogs={healthLogs}
+        appointments={appointments}
+        onShowToast={showToast}
+      />
+
+      {/* Medication Alarm Alert Modal */}
+      <MedicationAlarmModal
+        isOpen={!!activeAlarm}
+        onClose={closeAlarm}
+        activeAlert={activeAlarm}
+        onMarkTaken={handleAlarmMarkTaken}
+        onSnooze={snoozeAlarm}
+      />
+
+      {/* Multi-Patient Profile Switching Modal */}
+      <PatientSwitchModal
+        isOpen={isPatientSwitchOpen}
+        onClose={() => setIsPatientSwitchOpen(false)}
+        patients={patientList}
+        activePatientId={activePatientId}
+        onSelectPatient={handleSelectPatient}
+        onAddPatient={handleAddPatient}
+        onDeletePatient={handleDeletePatient}
+        onShowToast={showToast}
+      />
     </div>
   );
 }

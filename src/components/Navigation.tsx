@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, HeartPulse, Home, CalendarDays } from 'lucide-react';
+import { ShieldAlert, HeartPulse, Home, CalendarDays, Calendar } from 'lucide-react';
 
 interface NavigationProps {
   activeSection: string;
@@ -30,12 +30,17 @@ export const Navigation: React.FC<NavigationProps> = ({
       id: 'agenda',
       label: 'Agenda',
       icon: CalendarDays
+    },
+    {
+      id: 'google',
+      label: 'Google',
+      icon: Calendar
     }
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-emerald-100 md:hidden no-print shadow-lg">
-      <div className="grid grid-cols-4 items-center h-16 max-w-md mx-auto px-2">
+      <div className="grid grid-cols-5 items-center h-16 max-w-md mx-auto px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSection === tab.id;

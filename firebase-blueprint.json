@@ -1,0 +1,226 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile containing patient and UBS information",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "patient": {
+          "type": "object",
+          "description": "Patient clinical data and emergency contacts"
+        },
+        "patientList": {
+          "type": "array",
+          "description": "Multiple patient profiles managed by this caregiver"
+        },
+        "activePatientId": {
+          "type": "string",
+          "description": "Currently active patient ID"
+        },
+        "ubs": {
+          "type": "object",
+          "description": "Primary healthcare center data"
+        },
+        "medications": {
+          "type": "array",
+          "description": "User medications list backup"
+        },
+        "healthLogs": {
+          "type": "array",
+          "description": "User vital signs and health measurements list"
+        },
+        "appointments": {
+          "type": "array",
+          "description": "User medical appointments and exams schedule"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated ISO date string"
+        }
+      },
+      "required": ["userId"]
+    },
+    "Medication": {
+      "title": "Medication",
+      "description": "Patient medication record",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Medication identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The owner UID"
+        },
+        "nome": {
+          "type": "string",
+          "description": "Medication commercial or generic name"
+        },
+        "dosagem": {
+          "type": "string",
+          "description": "Dosage information"
+        },
+        "via": {
+          "type": "string",
+          "description": "Administration route"
+        },
+        "horarios": {
+          "type": "array",
+          "description": "Scheduled times list"
+        },
+        "instrucoes": {
+          "type": "string",
+          "description": "Caregiver instructions"
+        },
+        "ativo": {
+          "type": "boolean",
+          "description": "Whether medication is active"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update ISO string"
+        }
+      },
+      "required": ["id", "userId", "nome", "dosagem", "horarios"]
+    },
+    "HealthLog": {
+      "title": "HealthLog",
+      "description": "Vital signs measurement entry",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Log entry identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The owner UID"
+        },
+        "dataHora": {
+          "type": "string",
+          "description": "Date and time of measurement"
+        },
+        "pressaoSistolica": {
+          "type": "number",
+          "description": "Systolic blood pressure"
+        },
+        "pressaoDiastolica": {
+          "type": "number",
+          "description": "Diastolic blood pressure"
+        },
+        "glicemia": {
+          "type": "number",
+          "description": "Blood glucose level in mg/dL"
+        },
+        "glicemiaMomento": {
+          "type": "string",
+          "description": "Moment of measurement (jejum, pos-prandial, aleatorio)"
+        },
+        "temperatura": {
+          "type": "number",
+          "description": "Body temperature in Celsius"
+        },
+        "saturacaoO2": {
+          "type": "number",
+          "description": "Oxygen saturation percentage"
+        },
+        "frequenciaCardiaca": {
+          "type": "number",
+          "description": "Heart rate in BPM"
+        },
+        "anotacoes": {
+          "type": "string",
+          "description": "Clinical or caregiver observations"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update ISO string"
+        }
+      },
+      "required": ["id", "userId", "dataHora"]
+    },
+    "MedicalAppointment": {
+      "title": "MedicalAppointment",
+      "description": "Medical appointment or exam entry",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Appointment identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The owner UID"
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Type of appointment (consulta, exame_sangue, exame_imagem, etc)"
+        },
+        "titulo": {
+          "type": "string",
+          "description": "Title of the appointment"
+        },
+        "medicoOuLocal": {
+          "type": "string",
+          "description": "Doctor name or clinic/hospital location"
+        },
+        "data": {
+          "type": "string",
+          "description": "Date of appointment YYYY-MM-DD"
+        },
+        "hora": {
+          "type": "string",
+          "description": "Time of appointment HH:mm"
+        },
+        "preparo": {
+          "type": "string",
+          "description": "Preparation instructions"
+        },
+        "concluido": {
+          "type": "boolean",
+          "description": "Whether appointment is completed"
+        },
+        "anotacoes": {
+          "type": "string",
+          "description": "Additional notes"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update ISO string"
+        }
+      },
+      "required": ["id", "userId", "tipo", "titulo", "medicoOuLocal", "data", "hora"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile with patient and ubs data"
+    },
+    "/users/{userId}/medications/{medicationId}": {
+      "schema": "Medication",
+      "description": "Patient medications subcollection"
+    },
+    "/users/{userId}/healthLogs/{logId}": {
+      "schema": "HealthLog",
+      "description": "Patient vital signs logs subcollection"
+    },
+    "/users/{userId}/appointments/{appointmentId}": {
+      "schema": "MedicalAppointment",
+      "description": "Patient medical appointments and exams subcollection"
+    }
+  }
+}

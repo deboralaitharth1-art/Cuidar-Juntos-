@@ -1,4 +1,5 @@
 export interface PatientData {
+  id?: string;
   nome: string;
   nascimento: string;
   cartaoSus: string;
@@ -10,6 +11,10 @@ export interface PatientData {
   alergias: string;
   diagnosticos: string;
   observacoesMedicas: string;
+}
+
+export interface PatientProfile extends PatientData {
+  id: string;
 }
 
 export interface UbsData {
@@ -42,6 +47,20 @@ export interface HealthLogItem {
   diurese?: 'normal' | 'escura_pouca' | 'abundante';
   humorOuEstado?: 'alerta' | 'sonolento' | 'agitado' | 'confuso' | 'estavel';
   anotacoes: string;
+}
+
+export type AppointmentType = 'consulta' | 'exame_sangue' | 'exame_imagem' | 'retorno' | 'fisioterapia' | 'outro';
+
+export interface MedicalAppointment {
+  id: string;
+  tipo: AppointmentType;
+  titulo: string;
+  medicoOuLocal: string;
+  data: string; // YYYY-MM-DD
+  horario: string; // HH:mm
+  preparo?: string;
+  status: 'agendado' | 'realizado' | 'cancelado';
+  observacoes?: string;
 }
 
 export type DecubitusPosition = 'costas' | 'direito' | 'esquerdo' | 'sentado';

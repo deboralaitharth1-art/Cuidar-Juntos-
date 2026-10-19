@@ -1,10 +1,22 @@
-import { PatientData, UbsData, MedicationItem, HealthLogItem, DecubitusRecord, DecubitusPosition } from '../types';
+import {
+  PatientData,
+  PatientProfile,
+  UbsData,
+  MedicationItem,
+  HealthLogItem,
+  MedicalAppointment,
+  DecubitusRecord,
+  DecubitusPosition
+} from '../types';
 
 const STORAGE_KEYS = {
   PATIENT: 'cuidabem_patient',
+  PATIENT_LIST: 'cuidabem_patient_list',
+  ACTIVE_PATIENT_ID: 'cuidabem_active_patient_id',
   UBS: 'cuidabem_ubs',
   MEDICATIONS: 'cuidabem_medications',
   HEALTH_LOGS: 'cuidabem_health_logs',
+  APPOINTMENTS: 'cuidabem_appointments',
   DECUBITUS: 'cuidabem_decubitus_state',
   DECUBITUS_HISTORY: 'cuidabem_decubitus_history',
   TEXT_SIZE: 'cuidabem_text_size',
@@ -100,6 +112,42 @@ const DEFAULT_HEALTH_LOGS: HealthLogItem[] = [
   }
 ];
 
+const DEFAULT_APPOINTMENTS: MedicalAppointment[] = [
+  {
+    id: 'app-1',
+    tipo: 'consulta',
+    titulo: 'Consulta com Cardiologista',
+    medicoOuLocal: 'Dr. Roberto Alves — UBS Jardim das Flores (Sala 04)',
+    data: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
+    horario: '09:30',
+    preparo: 'Levar cartão SUS, exames laboratoriais anteriores e receitas dos remédios de pressão.',
+    status: 'agendado',
+    observacoes: 'Avaliação de rotina pós-ajuste de Losartana.'
+  },
+  {
+    id: 'app-2',
+    tipo: 'exame_sangue',
+    titulo: 'Exame de Sangue & Glicemia em Jejum',
+    medicoOuLocal: 'Laboratório Municipal / Posto Central',
+    data: new Date(Date.now() + 6 * 24 * 3600 * 1000).toISOString().split('T')[0],
+    horario: '07:15',
+    preparo: 'Jejum obrigatório de 10 a 12 horas. Ingestão de água em pequena quantidade permitida.',
+    status: 'agendado',
+    observacoes: 'Perfil lipídico, glicemia de jejum e hemoglobina glicada.'
+  },
+  {
+    id: 'app-3',
+    tipo: 'fisioterapia',
+    titulo: 'Sessão de Fisioterapia Domiciliar',
+    medicoOuLocal: 'Fisioterapeuta Juliana — Atendimento em Casa',
+    data: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().split('T')[0],
+    horario: '15:00',
+    preparo: 'Vestir roupas confortáveis e manter o ambiente arejado.',
+    status: 'realizado',
+    observacoes: 'Exercícios de mobilização passiva e fortalecimento muscular nos membros inferiores.'
+  }
+];
+
 export function getStoredPatient(): PatientData {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.PATIENT);
@@ -137,6 +185,49 @@ export function savePatient(data: PatientData): void {
   } catch (e) {
     console.error('Error saving patient data', e);
   }
+}
+
+export function getStoredPatientList(): PatientProfile[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.PATIENT_LIST);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+  } catch (e) {
+    console.error('Error reading patient list from storage', e);
+  }
+  const current = getStoredPatient();
+  const initialList: PatientProfile[] = [
+    {
+      ...current,
+      id: current.id || 'patient-1'
+    }
+  ];
+  savePatientList(initialList);
+  return initialList;
+}
+
+export function savePatientList(list: PatientProfile[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PATIENT_LIST, JSON.stringify(list));
+  } catch (e) {
+    console.error('Error saving patient list', e);
+  }
+}
+
+export function getActivePatientId(): string {
+  try {
+    const active = localStorage.getItem(STORAGE_KEYS.ACTIVE_PATIENT_ID);
+    if (active) return active;
+  } catch (e) {}
+  return 'patient-1';
+}
+
+export function saveActivePatientId(id: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PATIENT_ID, id);
+  } catch (e) {}
 }
 
 export function getStoredUbs(): UbsData {
@@ -198,6 +289,24 @@ export function saveHealthLogs(logs: HealthLogItem[]): void {
     localStorage.setItem(STORAGE_KEYS.HEALTH_LOGS, JSON.stringify(logs));
   } catch (e) {
     console.error('Error saving health logs', e);
+  }
+}
+
+export function getStoredAppointments(): MedicalAppointment[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error reading appointments', e);
+  }
+  return DEFAULT_APPOINTMENTS;
+}
+
+export function saveAppointments(appointments: MedicalAppointment[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(appointments));
+  } catch (e) {
+    console.error('Error saving appointments', e);
   }
 }
 

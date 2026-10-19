@@ -1,4 +1,5 @@
 import React from 'react';
+import appLogoImage from '../assets/images/app_logo_1792159235320.jpg';
 
 interface AppLogoProps {
   className?: string;
@@ -12,7 +13,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({ className = 'w-10 h-10', size 
       style={{ width: size, height: size }}
     >
       <img
-        src="/src/assets/images/app_logo_1792159235320.jpg"
+        src={appLogoImage}
         alt="Cuidar Juntos Logo"
         className="w-full h-full object-cover rounded-full"
         onError={(e) => {
