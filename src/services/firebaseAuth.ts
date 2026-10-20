@@ -184,9 +184,10 @@ export const emailSignIn = async (email: string, pass: string): Promise<AppUserP
     saveLocalUserProfile(profile);
     notifyAuthListeners(profile, cred.user, null);
     return profile;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errCode = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code: unknown }).code) : '';
     // If Firebase operation is not allowed or failed, provide fallback local login
-    if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/network-request-failed') {
+    if (errCode === 'auth/operation-not-allowed' || errCode === 'auth/network-request-failed') {
       const profile: AppUserProfile = {
         uid: 'local-' + Date.now(),
         email: email.trim(),
@@ -227,8 +228,9 @@ export const emailSignUp = async (email: string, pass: string, name: string): Pr
     saveLocalUserProfile(profile);
     notifyAuthListeners(profile, cred.user, null);
     return profile;
-  } catch (err: any) {
-    if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/network-request-failed') {
+  } catch (err: unknown) {
+    const errCode = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code: unknown }).code) : '';
+    if (errCode === 'auth/operation-not-allowed' || errCode === 'auth/network-request-failed') {
       const profile: AppUserProfile = {
         uid: 'local-' + Date.now(),
         email: email.trim(),

@@ -99,14 +99,23 @@ export const GoogleWorkspaceSection: React.FC<GoogleWorkspaceSectionProps> = ({
     }
   }, [accessToken]);
 
+  // Helper to extract error message safely
+  const getErrorMessage = (err: unknown): string => {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'object' && err !== null && 'message' in err) {
+      return String((err as { message: unknown }).message);
+    }
+    return 'Erro desconhecido';
+  };
+
   const loadCalendarData = async () => {
     if (!accessToken) return;
     setIsLoadingEvents(true);
     try {
       const items = await listCalendarEvents(accessToken);
       setEvents(items);
-    } catch (err: any) {
-      onShowToast(`⚠️ ${err.message || 'Erro ao carregar eventos da agenda'}`);
+    } catch (err: unknown) {
+      onShowToast(`⚠️ ${getErrorMessage(err) || 'Erro ao carregar eventos da agenda'}`);
     } finally {
       setIsLoadingEvents(false);
     }
@@ -118,7 +127,7 @@ export const GoogleWorkspaceSection: React.FC<GoogleWorkspaceSectionProps> = ({
     try {
       const messages = await listRecentGmailMessages(accessToken, 5);
       setRecentEmails(messages);
-    } catch (err: any) {
+    } catch {
       // quiet fail for non-critical listing
     } finally {
       setIsLoadingEmails(false);
@@ -134,8 +143,8 @@ export const GoogleWorkspaceSection: React.FC<GoogleWorkspaceSectionProps> = ({
         setAccessToken(res.accessToken);
         onShowToast('✅ Conectado com sucesso à conta Google!');
       }
-    } catch (err: any) {
-      onShowToast(`❌ Falha no login Google: ${err.message || 'Tente novamente'}`);
+    } catch (err: unknown) {
+      onShowToast(`❌ Falha no login Google: ${getErrorMessage(err) || 'Tente novamente'}`);
     } finally {
       setIsLoadingAuth(false);
     }
@@ -170,8 +179,8 @@ export const GoogleWorkspaceSection: React.FC<GoogleWorkspaceSectionProps> = ({
       setIsNewEventModalOpen(false);
       onShowToast('✅ Agendamento adicionado ao Google Calendar!');
       loadCalendarData();
-    } catch (err: any) {
-      onShowToast(`❌ Erro ao criar agendamento: ${err.message}`);
+    } catch (err: unknown) {
+      onShowToast(`❌ Erro ao criar agendamento: ${getErrorMessage(err)}`);
     }
   };
 
@@ -182,8 +191,8 @@ export const GoogleWorkspaceSection: React.FC<GoogleWorkspaceSectionProps> = ({
       await deleteCalendarEvent(accessToken, eventToDelete.id);
       setEvents(prev => prev.filter(e => e.id !== eventToDelete.id));
       onShowToast('🗑️ Agendamento removido do Google Calendar.');
-    } catch (err: any) {
-      onShowToast(`❌ Erro ao excluir: ${err.message}`);
+    } catch (err: unknown) {
+      onShowToast(`❌ Erro ao excluir: ${getErrorMessage(err)}`);
     } finally {
       setEventToDelete(null);
     }
@@ -213,8 +222,8 @@ export const GoogleWorkspaceSection: React.FC<GoogleWorkspaceSectionProps> = ({
       setIsSendEmailModalOpen(false);
       onShowToast(`✉️ Relatório enviado com sucesso para ${emailForm.to}!`);
       loadGmailData();
-    } catch (err: any) {
-      onShowToast(`❌ Erro ao enviar pelo Gmail: ${err.message}`);
+    } catch (err: unknown) {
+      onShowToast(`❌ Erro ao enviar pelo Gmail: ${getErrorMessage(err)}`);
     }
   };
 

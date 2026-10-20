@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import appLogoImage from '../assets/images/app_logo_1792159235320.jpg';
 
 interface AppLogoProps {
@@ -7,30 +7,28 @@ interface AppLogoProps {
 }
 
 export const AppLogo: React.FC<AppLogoProps> = ({ className = 'w-10 h-10', size = 40 }) => {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div
       className={`relative inline-flex items-center justify-center shrink-0 rounded-full overflow-hidden ${className}`}
       style={{ width: size, height: size }}
     >
-      <img
-        src={appLogoImage}
-        alt="Cuidar Juntos Logo"
-        className="w-full h-full object-cover rounded-full"
-        onError={(e) => {
-          // If image fails to load, gracefully switch to SVG fallback
-          (e.currentTarget as HTMLElement).style.display = 'none';
-          const fallback = (e.currentTarget.nextElementSibling as HTMLElement);
-          if (fallback) fallback.style.display = 'block';
-        }}
-      />
-
-      {/* High-fidelity Vector SVG Fallback reproducing the user's uploaded emblem */}
-      <svg
-        viewBox="0 0 100 100"
-        className="w-full h-full absolute inset-0 hidden"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
+      {!imgError ? (
+        <img
+          src={appLogoImage}
+          alt="Cuidar Juntos Logo"
+          className="w-full h-full object-cover rounded-full"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        /* High-fidelity Vector SVG Fallback reproducing the user's uploaded emblem */
+        <svg
+          viewBox="0 0 100 100"
+          className="w-full h-full absolute inset-0"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
         {/* Circular background */}
         <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
         
@@ -65,6 +63,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({ className = 'w-10 h-10', size 
           fill="#FFFFFF"
         />
       </svg>
+      )}
     </div>
   );
 };

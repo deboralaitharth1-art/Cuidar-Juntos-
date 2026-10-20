@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock, RotateCcw, Bath, Utensils, AlertCircle, Heart, CheckCircle2, Volume2, PhoneCall } from 'lucide-react';
 import { DecubitusPosition, DecubitusRecord } from '../types';
 import { DecubitusState, getStoredDecubitus, saveDecubitus, getStoredDecubitusHistory, saveDecubitusHistory } from '../utils/storage';
@@ -13,6 +13,7 @@ export const HomeCareSection: React.FC<HomeCareSectionProps> = ({ onShowToast })
   const [history, setHistory] = useState<DecubitusRecord[]>(getStoredDecubitusHistory);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
   const [isTimerFinished, setIsTimerFinished] = useState(false);
+  const hasChimedRef = useRef<boolean>(false);
 
   // Self-care checklist
   const [caregiverChecks, setCaregiverChecks] = useState<Record<string, boolean>>(() => {
@@ -24,7 +25,7 @@ export const HomeCareSection: React.FC<HomeCareSectionProps> = ({ onShowToast })
     }
   });
 
-  // Calculate remaining time
+  // Calculate remaining time with strict single-execution audio guard
   useEffect(() => {
     const updateCountdown = () => {
       const lastChange = new Date(decubitus.ultimaMudanca).getTime();
@@ -33,18 +34,23 @@ export const HomeCareSection: React.FC<HomeCareSectionProps> = ({ onShowToast })
       const diff = Math.max(0, Math.floor((targetTime - now) / 1000));
       
       setSecondsRemaining(diff);
-      if (diff === 0 && !isTimerFinished) {
+
+      if (diff === 0) {
         setIsTimerFinished(true);
-        playChimeTone();
-      } else if (diff > 0 && isTimerFinished) {
+        if (!hasChimedRef.current) {
+          hasChimedRef.current = true;
+          playChimeTone();
+        }
+      } else {
         setIsTimerFinished(false);
+        hasChimedRef.current = false;
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [decubitus, isTimerFinished]);
+  }, [decubitus.ultimaMudanca, decubitus.intervaloMinutos]);
 
   const handlePositionChange = (novaPosicao: DecubitusPosition) => {
     const now = new Date();

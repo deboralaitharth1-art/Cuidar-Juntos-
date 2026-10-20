@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   User,
   Pill,
@@ -397,7 +397,7 @@ export const HealthAgendaSection: React.FC<HealthAgendaSectionProps> = ({
   // ==========================================
 
   // 1. Download formatted text report file (.txt)
-  const handleDownloadTxtReport = () => {
+  const handleDownloadTxtReport = useCallback(() => {
     let content = `========================================================================\n`;
     content += `CUIDAR JUNTOS — RELATÓRIO CLÍNICO DE SINAIS VITAIS E CUIDADOS\n`;
     content += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
@@ -496,10 +496,10 @@ export const HealthAgendaSection: React.FC<HealthAgendaSectionProps> = ({
 
     setIsDownloadModalOpen(false);
     onShowToast('📥 Relatório em texto (.txt) baixado com sucesso!');
-  };
+  }, [patient, medications, healthLogs, appointments, onShowToast]);
 
   // 2. Download spreadsheet CSV (.csv)
-  const handleDownloadCsvReport = () => {
+  const handleDownloadCsvReport = useCallback(() => {
     // Add BOM for Microsoft Excel UTF-8 compatibility
     const BOM = '\uFEFF';
     const headers = [
@@ -556,10 +556,10 @@ export const HealthAgendaSection: React.FC<HealthAgendaSectionProps> = ({
 
     setIsDownloadModalOpen(false);
     onShowToast('📊 Planilha Excel (.csv) baixada com sucesso!');
-  };
+  }, [patient.nome, healthLogs, onShowToast]);
 
   // 3. Share summary to clipboard (WhatsApp)
-  const handleShareSummary = () => {
+  const handleShareSummary = useCallback(() => {
     const latestLog = healthLogs[0];
     const medList = medications.map(m => `• ${m.nome} (${m.dosagem}) — Horários: ${m.horarios.join(', ')}`).join('\n');
 
@@ -585,7 +585,7 @@ export const HealthAgendaSection: React.FC<HealthAgendaSectionProps> = ({
     setCopiedShare(true);
     onShowToast('📋 Resumo completo copiado para enviar no WhatsApp!');
     setTimeout(() => setCopiedShare(false), 3000);
-  };
+  }, [patient, medications, healthLogs, onShowToast]);
 
   const handlePrint = () => {
     window.print();

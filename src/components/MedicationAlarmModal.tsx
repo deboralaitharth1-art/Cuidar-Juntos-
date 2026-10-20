@@ -21,6 +21,17 @@ export const MedicationAlarmModal: React.FC<MedicationAlarmModalProps> = ({
   onMarkTaken,
   onSnooze
 }) => {
+  React.useEffect(() => {
+    if (!isOpen || !activeAlert) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, activeAlert, onClose]);
+
   if (!isOpen || !activeAlert) return null;
 
   const { medication, time } = activeAlert;

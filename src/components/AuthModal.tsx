@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User,
   Mail,
@@ -47,11 +47,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const isMountedRef = React.useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Reset form when modal closes or opens
   const handleClose = () => {
     setErrorMsg(null);
     setIsLoading(false);
     onClose();
+  };
+
+  // Helper to extract Firebase error code safely
+  const getErrorCode = (err: unknown): string => {
+    if (typeof err === 'object' && err !== null && 'code' in err) {
+      return String((err as { code: unknown }).code);
+    }
+    return '';
   };
 
   // 1. Google Sign In
@@ -63,16 +79,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (res?.user) {
         onShowToast(`Bem-vindo(a), ${res.profile.displayName || 'Cuidador(a)'}! Conectado via Google.`);
         handleClose();
+        return;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err?.code === 'auth/popup-closed-by-user') {
+      if (!isMountedRef.current) return;
+      const code = getErrorCode(err);
+      if (code === 'auth/popup-closed-by-user') {
         setErrorMsg('A janela de login do Google foi fechada antes da conclusão.');
       } else {
         setErrorMsg('Não foi possível conectar com o Google no momento. Verifique sua conexão e tente novamente.');
       }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -100,20 +121,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onShowToast(`Conta criada com sucesso para ${profile.displayName || 'Cuidador(a)'}!`);
       }
       handleClose();
-    } catch (err: any) {
+      return;
+    } catch (err: unknown) {
       console.error(err);
-      if (err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
+      if (!isMountedRef.current) return;
+      const code = getErrorCode(err);
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
         setErrorMsg('E-mail ou senha incorretos. Verifique e tente novamente.');
-      } else if (err?.code === 'auth/email-already-in-use') {
+      } else if (code === 'auth/email-already-in-use') {
         setErrorMsg('Este e-mail já está cadastrado. Alterne para a aba "Já tenho conta" para entrar.');
-      } else if (err?.code === 'auth/invalid-email') {
+      } else if (code === 'auth/invalid-email') {
         setErrorMsg('Por favor, informe um endereço de e-mail válido.');
       } else {
         // Successful local fallback or generic
         setErrorMsg('Aviso de conexão. Se preferir, você pode usar o "Modo Convidado" ou "Conectar com Google".');
       }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -125,11 +151,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const profile = await guestSignIn();
       onShowToast(`Entrou como ${profile.displayName}. Seus dados estão salvos no aparelho!`);
       handleClose();
-    } catch (err) {
+      return;
+    } catch (err: unknown) {
       console.error(err);
-      setErrorMsg('Erro ao iniciar modo convidado.');
+      if (isMountedRef.current) {
+        setErrorMsg('Erro ao iniciar modo convidado.');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -140,10 +171,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       await logout();
       onShowToast('Você saiu da sua conta.');
       handleClose();
-    } catch (err) {
+      return;
+    } catch (err: unknown) {
       console.error(err);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
